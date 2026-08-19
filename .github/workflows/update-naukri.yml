@@ -1,0 +1,23 @@
+name: Update Naukri Profile
+
+on:
+  schedule:
+    - cron: '30 18 * * *' # Runs daily at midnight IST (18:30 UTC)
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  update-profile:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update Naukri profile
+        uses: Prateek-Wayne/naukri-resume-action@v1.0.1
+        with:
+          username: ${{ secrets.NAUKRI_USERNAME }}
+          password: ${{ secrets.NAUKRI_PASSWORD }}
+          profile_id: ${{ secrets.NAUKRI_PROFILE_ID }}
+          resume_path: |-
+            ./resumes/resume1.pdf
+          profile_summary: 'Experienced professional actively seeking new opportunities. Skilled in delivering high-quality work with a strong focus on results and continuous improvement.'
