@@ -13,11 +13,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Update Naukri profile
-        uses: Prateek-Wayne/naukri-resume-action@v1.0.1
+        uses: ./
         with:
           username: ${{ secrets.NAUKRI_USERNAME }}
           password: ${{ secrets.NAUKRI_PASSWORD }}
           profile_id: ${{ secrets.NAUKRI_PROFILE_ID }}
           resume_path: |-
-            ./resumes/resume1.pdf
+            ./resumes/Mohammad_Irfanuddin_FullStack_Developer_v3.pdf
           profile_summary: 'Experienced professional actively seeking new opportunities. Skilled in delivering high-quality work with a strong focus on results and continuous improvement.'
