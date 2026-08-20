@@ -42,5 +42,5 @@ outputs:
     description: 'Timestamp of the upload operation'
 
 runs:
-  using: node20
+  using: node22
   main: dist/index.js
