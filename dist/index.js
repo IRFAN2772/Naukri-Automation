@@ -51709,7 +51709,16 @@ async function run() {
             else {
                 info('🔄 Updating profile summary...');
                 // add a unique time stamp at the end of profile summary
-                profileSummary += ` ${new Date().getTime()}`;
+                const timestamp = ` ${new Date().getTime()}`;
+                const maxLen = 1000;
+                // Truncate summary if needed to fit timestamp within 1000 char limit
+                if (profileSummary.length + timestamp.length > maxLen) {
+                    profileSummary =
+                        profileSummary.substring(0, maxLen - timestamp.length) + timestamp;
+                }
+                else {
+                    profileSummary += timestamp;
+                }
                 try {
                     const ok = await updateProfileSummary(cookies, profileId, profileSummary);
                     if (ok)
