@@ -17,6 +17,7 @@ jobs:
           password: ${{ secrets.NAUKRI_PASSWORD }}
           profile_id: ${{ secrets.NAUKRI_PROFILE_ID }}
           resume_path: |-
-            ./resumes/resume1.pdf
-          profile_summary: 'Your profile summary here ' # Optional: min 50 chars
-          resume_headline: 'Your resume headline here ' # Optional: max 250 chars
+            ./resumes/Mohammad_Irfanuddin_FullStack_Developer_v3.pdf
+          profile_summary: 'Full Stack Engineer with 2+ years of experience designing and building enterprise-grade applications, secure authentication systems, and scalable microservices platforms. I enjoy taking ownership of software from architecture to production—breaking complex problems into maintainable services, designing reliable integrations, implementing security-first solutions, and delivering polished user experiences. At Skillsoft, I have contributed to building enterprise learning platforms by developing microservices, RBAC authorization systems, impersonation workflows, Microsoft Entra ID integrations, Graph API-based provisioning services, and resilient third-party integrations. CORE EXPERTISE • React & Modern Frontend Development • Node.js & Backend Services • Microservices Architecture • Authentication & Authorization (JWT, RBAC, Entra ID) • REST APIs & Third-Party Integrations • PostgreSQL & Database • Azure Cloud Services • Testing & Quality Engineering • System Design & Distributed Systems'
+ # Optional: min 50 chars
+          resume_headline: 'Full Stack Developer (Node.js, React.js & Microservices) | 2+ Years Experience | Skills: REST APIs, Azure AD, JWT, RBAC, Sequelize | Architected Impersonation & RBAC | 30 Days Notice ' # Optional: max 250 chars
