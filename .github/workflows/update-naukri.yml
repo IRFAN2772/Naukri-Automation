@@ -12,6 +12,74 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup VPN (India)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq openvpn > /dev/null 2>&1
+          
+          echo "📡 Fetching free India VPN servers from VPNGate..."
+          
+          # Fetch VPNGate server list and find India OpenVPN configs
+          VPNGATE_CSV=$(curl -s "http://www.vpngate.net/api/iphone/" | tail -n +3 | head -n -1)
+          
+          # Filter for India servers (country code "IN") with OpenVPN support
+          INDIA_SERVERS=$(echo "$VPNGATE_CSV" | awk -F',' '$7 == "IN" && $15 != ""' | head -5)
+          
+          if [ -z "$INDIA_SERVERS" ]; then
+            echo "⚠️ No India VPN servers available, trying nearby regions..."
+            INDIA_SERVERS=$(echo "$VPNGATE_CSV" | awk -F',' '($7 == "SG" || $7 == "IN") && $15 != ""' | head -5)
+          fi
+          
+          CONNECTED=false
+          
+          while IFS=',' read -r line; do
+            [ -z "$line" ] && continue
+            
+            # Extract OpenVPN config (base64 encoded, field 15)
+            OVPN_BASE64=$(echo "$line" | cut -d',' -f15)
+            SERVER_IP=$(echo "$line" | cut -d',' -f2)
+            COUNTRY=$(echo "$line" | cut -d',' -f7)
+            
+            [ -z "$OVPN_BASE64" ] && continue
+            
+            echo "🔄 Trying server $SERVER_IP ($COUNTRY)..."
+            
+            # Decode and save OpenVPN config
+            echo "$OVPN_BASE64" | base64 -d > /tmp/vpn.ovpn
+            
+            # Start OpenVPN in background
+            sudo openvpn --config /tmp/vpn.ovpn --daemon --log /tmp/vpn.log \
+              --connect-retry 3 --connect-timeout 10 \
+              --auth-nocache --script-security 2
+            
+            # Wait for connection (max 20 seconds)
+            for i in $(seq 1 20); do
+              if ip addr show tun0 > /dev/null 2>&1; then
+                echo "✅ VPN connected via $COUNTRY ($SERVER_IP)"
+                CONNECTED=true
+                break
+              fi
+              sleep 1
+            done
+            
+            if [ "$CONNECTED" = true ]; then
+              break
+            else
+              echo "❌ Failed, trying next server..."
+              sudo killall openvpn 2>/dev/null || true
+              sleep 2
+            fi
+          done <<< "$INDIA_SERVERS"
+          
+          if [ "$CONNECTED" = false ]; then
+            echo "❌ Could not connect to any VPN server"
+            exit 1
+          fi
+          
+          # Verify we have an Indian IP
+          MY_IP=$(curl -s https://ipinfo.io/json)
+          echo "🌐 Current IP info: $MY_IP"
+
       - name: Update Naukri profile
         uses: ./
         with:
