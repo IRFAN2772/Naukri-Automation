@@ -26,8 +26,8 @@ jobs:
           LINE_COUNT=$(echo "$RAW_DATA" | wc -l)
           echo "📊 Got $LINE_COUNT lines from VPNGate API"
           
-          # Remove header lines and footer
-          VPNGATE_CSV=$(echo "$RAW_DATA" | tail -n +3 | head -n -1)
+          # Remove header lines, footer, and Windows \r characters
+          VPNGATE_CSV=$(echo "$RAW_DATA" | tr -d '\r' | tail -n +3 | head -n -1)
           
           # Debug: show available countries
           echo "🌍 Available countries:"
@@ -54,17 +54,22 @@ jobs:
           while IFS= read -r line; do
             [ -z "$line" ] && continue
             
-            # Extract fields
-            OVPN_BASE64=$(echo "$line" | cut -d',' -f15)
-            SERVER_IP=$(echo "$line" | cut -d',' -f2)
-            COUNTRY=$(echo "$line" | cut -d',' -f7)
+            # Extract fields - use tr to strip \r from Windows line endings
+            OVPN_BASE64=$(echo "$line" | tr -d '\r' | cut -d',' -f15-)
+            SERVER_IP=$(echo "$line" | tr -d '\r' | cut -d',' -f2)
+            COUNTRY=$(echo "$line" | tr -d '\r' | cut -d',' -f7)
             
             [ -z "$OVPN_BASE64" ] && continue
             
             echo "🔄 Trying server $SERVER_IP ($COUNTRY)..."
             
-            # Decode and save OpenVPN config
-            echo "$OVPN_BASE64" | base64 -d > /tmp/vpn.ovpn
+            # Decode and save OpenVPN config (strip whitespace/newlines from base64)
+            printf '%s' "$OVPN_BASE64" | tr -d '\r\n ' | base64 -d > /tmp/vpn.ovpn 2>/dev/null
+            
+            if [ ! -s /tmp/vpn.ovpn ]; then
+              echo "⚠️ Failed to decode config, skipping..."
+              continue
+            fi
             
             # Start OpenVPN in background
             sudo openvpn --config /tmp/vpn.ovpn --daemon --log /tmp/vpn.log \
