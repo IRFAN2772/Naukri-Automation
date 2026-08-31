@@ -1,0 +1,12 @@
+{
+  "regions": ["Mumbai, India (South) - ap-south-1 - bom1"],
+  "crons": [
+    { "path": "/api/cron", "schedule": "30 3 * * *" },
+    { "path": "/api/cron", "schedule": "30 8 * * *" }
+  ],
+  "functions": {
+    "api/cron.ts": {
+      "includeFiles": "resumes/**"
+    }
+  }
+}
