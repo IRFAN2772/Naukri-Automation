@@ -1,4 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createRequire } from 'module';
+import path from 'path';
+
+const require = createRequire(import.meta.url);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 1. Check CRON_SECRET authorization
@@ -7,18 +11,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 2. Mock GitHub Actions env vars if required by main.ts
+    // 2. Set environment fallbacks
     process.env.GITHUB_OUTPUT = '/tmp/output.txt';
 
-    // 3. Register ts-node on-the-fly for src/ TypeScript files
+    // 3. Register ts-node on-the-fly for ES module scope
     try {
       require('ts-node/register');
     } catch (e) {
-      // Ignore if already registered
+      // already registered
     }
 
-    // 4. Require the main script relative to the current file
-    const path = require('path');
+    // 4. Resolve path and load main module
     const mainPath = path.resolve(process.cwd(), 'src/main.ts');
     const mainModule = require(mainPath);
 
