@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { run } from '../src/main'; // Statically imported at top level
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 1. Verify CRON_SECRET authorization header
@@ -7,18 +8,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  process.exitCode = 0; // reset exit status
+  process.exitCode = 0; // Reset process exit status
 
   try {
-    // Set environment variable fallback for GitHub Action outputs
+    // Fallback for GitHub Action outputs context
     process.env.GITHUB_OUTPUT = '/tmp/output.txt';
 
-    // 2. Import main.ts dynamically (Vercel resolves this relative path at build time)
-    const mainModule = await import('../src/main');
-
-    if (typeof mainModule.run === 'function') {
-      await mainModule.run();
-    }
+    // 2. Execute main script directly
+    await run();
 
     const failed = process.exitCode === 1;
     process.exitCode = 0;
