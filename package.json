@@ -27,7 +27,7 @@
     ".": "./dist/index.js"
   },
   "engines": {
-   "node": "24.x"
+    "node": "24.x"
   },
   "scripts": {
     "bundle": "npm run format:write && npm run package",
@@ -46,7 +46,8 @@
   "dependencies": {
     "@actions/core": "^3.0.1",
     "axios": "^1.18.1",
-    "form-data": "^4.0.6"
+    "form-data": "^4.0.6",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.0",

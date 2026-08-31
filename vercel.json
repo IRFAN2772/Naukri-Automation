@@ -6,7 +6,7 @@
   ],
   "functions": {
     "api/cron.ts": {
-      "includeFiles": "{src/**,resumes/**}"
+      "includeFiles": "src/**,resumes/**"
     }
   }
 }
