@@ -246,12 +246,8 @@ export default async function handler(
       if (profileSummary.length < 50) {
         result.profileSummary = 'skipped-too-short'
       } else {
-        const timestamp = ` ${Date.now()}`
-        if (profileSummary.length + timestamp.length > 1000) {
-          profileSummary =
-            profileSummary.slice(0, 1000 - timestamp.length) + timestamp
-        } else {
-          profileSummary += timestamp
+        if (profileSummary.length > 1000) {
+          profileSummary = profileSummary.slice(0, 1000)
         }
         result.profileSummary = (await updateProfileField(cookies, profileId, {
           summary: profileSummary
