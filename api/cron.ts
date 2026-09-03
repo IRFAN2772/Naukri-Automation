@@ -1,10 +1,21 @@
 import fs from 'fs'
 import path from 'path'
+import axios from 'axios'
+import FormData from 'form-data'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { login } from '../src/api/login'
-import { updateProfileSummary } from '../src/api/updateProfile'
-import { updateResumeHeadline } from '../src/api/updateResumeHeadline'
-import { uploadResume } from '../src/api/uploadResume'
+
+type LoginCookies = {
+  unid: string
+  nkwap: string
+  nauk_at: string
+  nauk_rt: string
+  nauk_sid: string
+}
+
+const LOGIN_URL = 'https://www.naukri.com/central-login-services/v1/login'
+const RESUME_UPLOAD_URL = 'https://filevalidation.naukri.com/file'
+const RESUME_HEADLINE_URL =
+  'https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v1/users/self/fullprofiles'
 
 function env(...names: string[]): string {
   for (const name of names) {
@@ -12,6 +23,157 @@ function env(...names: string[]): string {
     if (value && value.trim()) return value.trim()
   }
   return ''
+}
+
+function cookieString(cookies: LoginCookies): string {
+  return `MYNAUKRI[UNID]=${cookies.unid}; NKWAP=${cookies.nkwap}; nauk_at=${cookies.nauk_at}; nauk_rt=${cookies.nauk_rt}; nauk_sid=${cookies.nauk_sid}`
+}
+
+function loginHeaders() {
+  return {
+    accept: 'application/json',
+    'accept-language': 'en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7',
+    appid: '109',
+    'cache-control': 'no-cache',
+    clientid: 'd3skt0p',
+    'content-type': 'application/json',
+    gid: 'LOCATION,INDUSTRY,EDUCATION,FAREA_ROLE',
+    pragma: 'no-cache',
+    'x-requested-with': 'XMLHttpRequest',
+    'user-agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.5735.198 Safari/537.36',
+    systemid: 'jobseeker',
+    Referer: 'https://www.naukri.com/'
+  }
+}
+
+function authHeaders(cookies: LoginCookies) {
+  return {
+    accept: 'application/json, text/javascript, */*; q=0.01',
+    'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+    appid: '105',
+    origin: 'https://www.naukri.com',
+    referer: 'https://www.naukri.com/',
+    'content-type': 'application/json',
+    'x-http-method-override': 'PUT',
+    'x-requested-with': 'XMLHttpRequest',
+    systemid: 'Naukri',
+    clientid: 'd3skt0p',
+    authorization: `Bearer ${cookies.nauk_at}`,
+    Cookie: cookieString(cookies),
+    'user-agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.5735.198 Safari/537.36'
+  }
+}
+
+function extractCookies(setCookie: string[] = []): LoginCookies {
+  const cookies: LoginCookies = {
+    unid: '',
+    nkwap: '',
+    nauk_at: '',
+    nauk_rt: '',
+    nauk_sid: ''
+  }
+
+  for (const cookie of setCookie) {
+    if (cookie.startsWith('MYNAUKRI[UNID]=')) {
+      cookies.unid = cookie.split(';')[0].split('=')[1]
+    } else if (cookie.startsWith('NKWAP=')) {
+      cookies.nkwap = cookie.split(';')[0].split('=')[1]
+    } else if (cookie.startsWith('nauk_at=')) {
+      cookies.nauk_at = cookie.split(';')[0].split('=')[1]
+    } else if (cookie.startsWith('nauk_rt=')) {
+      cookies.nauk_rt = cookie.split(';')[0].split('=')[1]
+    } else if (cookie.startsWith('nauk_sid=')) {
+      cookies.nauk_sid = cookie.split(';')[0].split('=')[1]
+    }
+  }
+
+  return cookies
+}
+
+async function login(
+  username: string,
+  password: string
+): Promise<LoginCookies> {
+  const response = await axios.post(
+    LOGIN_URL,
+    { username, password },
+    {
+      headers: loginHeaders(),
+      maxRedirects: 0,
+      validateStatus: (status) => status < 400
+    }
+  )
+
+  const cookies = extractCookies(response.headers['set-cookie'])
+  if (!cookies.nauk_at) {
+    throw new Error('Login failed: nauk_at cookie missing')
+  }
+  return cookies
+}
+
+async function updateProfileField(
+  cookies: LoginCookies,
+  profileId: string,
+  profile: Record<string, string>
+): Promise<boolean> {
+  try {
+    const resp = await axios.post(
+      RESUME_HEADLINE_URL,
+      { profile, profileId },
+      { headers: authHeaders(cookies) }
+    )
+    return resp.status === 200
+  } catch (error) {
+    console.error('Profile field update failed:', error)
+    return false
+  }
+}
+
+async function uploadResume(
+  cookies: LoginCookies,
+  resumePath: string,
+  profileId: string
+): Promise<boolean> {
+  const formKey = 'F51f8e7e54e205'
+  const fileKey = 'UyFNbCXtBHdkXQ'
+  const fileName = path.basename(resumePath)
+  const formData = new FormData()
+  formData.append('formKey', formKey)
+  formData.append('fileName', fileName)
+  formData.append('uploadCallback', 'true')
+  formData.append('fileKey', fileKey)
+  formData.append('file', fs.readFileSync(resumePath), {
+    filename: fileName,
+    contentType: 'application/pdf'
+  })
+
+  const uploadHeaders = {
+    ...formData.getHeaders(),
+    accept: 'application/json, text/javascript, */*; q=0.01',
+    origin: 'https://www.naukri.com',
+    referer: 'https://www.naukri.com/',
+    appid: '109',
+    clientid: 'd3skt0p',
+    systemid: 'fileupload',
+    Cookie: cookieString(cookies),
+    'user-agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.5735.198 Safari/537.36'
+  }
+
+  const uploadResponse = await axios.post(RESUME_UPLOAD_URL, formData, {
+    headers: uploadHeaders
+  })
+  if (uploadResponse.status !== 200) return false
+
+  const updateUrl = `https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v0/users/self/profiles/${profileId}/advResume`
+  const updateResponse = await axios.post(
+    updateUrl,
+    { textCV: { formKey, fileKey, textCvContent: '' } },
+    { headers: authHeaders(cookies) }
+  )
+  return updateResponse.status === 200
 }
 
 function resolveResumePath(inputPath: string): string {
@@ -91,11 +253,9 @@ export default async function handler(
         } else {
           profileSummary += timestamp
         }
-        result.profileSummary = (await updateProfileSummary(
-          cookies,
-          profileId,
-          profileSummary
-        ))
+        result.profileSummary = (await updateProfileField(cookies, profileId, {
+          summary: profileSummary
+        }))
           ? 'updated'
           : 'failed'
       }
@@ -105,11 +265,9 @@ export default async function handler(
       if (resumeHeadline.length > 250) {
         result.resumeHeadline = 'skipped-too-long'
       } else {
-        result.resumeHeadline = (await updateResumeHeadline(
-          cookies,
-          profileId,
+        result.resumeHeadline = (await updateProfileField(cookies, profileId, {
           resumeHeadline
-        ))
+        }))
           ? 'updated'
           : 'failed'
       }
