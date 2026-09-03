@@ -6,7 +6,8 @@
   ],
   "functions": {
     "api/cron.ts": {
-      "includeFiles": "resumes/**"
+      "includeFiles": "resumes/**",
+      "maxDuration": 60
     }
   }
 }
