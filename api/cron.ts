@@ -1,27 +1,31 @@
 import fs from 'fs'
 import path from 'path'
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { login } from '../src/api/login'
-import { updateProfileSummary } from '../src/api/updateProfile'
-import { updateResumeHeadline } from '../src/api/updateResumeHeadline'
-import { uploadResume } from '../src/api/uploadResume'
 
-function env(name: string, fallback?: string): string {
-  return (
-    process.env[name] ||
-    process.env[`INPUT_${name.replace(/^NAUKRI_/, '')}`] ||
-    fallback ||
-    ''
-  ).trim()
+type VercelRequest = {
+  headers: Record<string, string | string[] | undefined>
+}
+
+type VercelResponse = {
+  status: (code: number) => VercelResponse
+  json: (body: unknown) => VercelResponse
+}
+
+function env(...names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name]
+    if (value && value.trim()) return value.trim()
+  }
+  return ''
 }
 
 function resolveResumePath(inputPath: string): string {
+  const basename = path.basename(inputPath)
   const candidates = [
     inputPath,
     path.resolve(process.cwd(), inputPath),
-    path.resolve(process.cwd(), 'resumes', path.basename(inputPath)),
-    path.resolve(__dirname, '..', inputPath),
-    path.resolve(__dirname, '../resumes', path.basename(inputPath))
+    path.resolve(process.cwd(), 'resumes', basename),
+    path.join('/var/task', inputPath),
+    path.join('/var/task/resumes', basename)
   ]
 
   for (const candidate of candidates) {
@@ -38,7 +42,10 @@ export default async function handler(
   res: VercelResponse
 ): Promise<VercelResponse> {
   const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || req.headers.authorization !== `Bearer ${cronSecret}`) {
+  const authHeader = req.headers.authorization
+  const token = Array.isArray(authHeader) ? authHeader[0] : authHeader
+
+  if (!cronSecret || token !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
@@ -63,6 +70,13 @@ export default async function handler(
 
     const resumePath = resolveResumePath(resumePathInput)
     console.log(`Starting Naukri update from bom1 using ${resumePath}`)
+
+    const { login } = await import('../src/api/login')
+    const { updateProfileSummary } = await import('../src/api/updateProfile')
+    const { updateResumeHeadline } = await import(
+      '../src/api/updateResumeHeadline'
+    )
+    const { uploadResume } = await import('../src/api/uploadResume')
 
     const cookies = await login(username, password)
     if (!cookies) {
