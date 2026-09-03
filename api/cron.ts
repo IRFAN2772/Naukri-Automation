@@ -1,14 +1,10 @@
 import fs from 'fs'
 import path from 'path'
-
-type VercelRequest = {
-  headers: Record<string, string | string[] | undefined>
-}
-
-type VercelResponse = {
-  status: (code: number) => VercelResponse
-  json: (body: unknown) => VercelResponse
-}
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { login } from '../src/api/login'
+import { updateProfileSummary } from '../src/api/updateProfile'
+import { updateResumeHeadline } from '../src/api/updateResumeHeadline'
+import { uploadResume } from '../src/api/uploadResume'
 
 function env(...names: string[]): string {
   for (const name of names) {
@@ -70,13 +66,6 @@ export default async function handler(
 
     const resumePath = resolveResumePath(resumePathInput)
     console.log(`Starting Naukri update from bom1 using ${resumePath}`)
-
-    const { login } = await import('../src/api/login')
-    const { updateProfileSummary } = await import('../src/api/updateProfile')
-    const { updateResumeHeadline } = await import(
-      '../src/api/updateResumeHeadline'
-    )
-    const { uploadResume } = await import('../src/api/uploadResume')
 
     const cookies = await login(username, password)
     if (!cookies) {
